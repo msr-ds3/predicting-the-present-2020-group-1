@@ -309,8 +309,8 @@ We see very small difference when comparing original data and unadjusted data. W
 ### 2004 - 2011
 
 ```{r}
-suvs_trends <- read_csv("suvs_2004_2011.csv")
-insurance_trends <- read_csv("auto_2004_2011.csv")
+suvs_trends <- read_csv("New_Trucks_suvs.csv")
+insurance_trends <- read_csv("New_Trucks_suvs.csv")
 # rename
 names1<- names(suvs_trends)
 names2 <- names(insurance_trends)
@@ -341,9 +341,6 @@ model_with_trend <- lm(data = with_trends_full, sales~lag(sales, 1)+lag(sales,12
 summary(model_with_trend)
 
 
-## trying the transformation on trends
-
-with_trends_full %>% View
 ```
 
 From the summary of the model we know that they suvs and insurance do not contribute to the model.
@@ -351,8 +348,8 @@ From the summary of the model we know that they suvs and insurance do not contri
 ### 2004 -2020 
 
 ```{r}
-suvs_trends <- read_csv("suvs_2004_2020.csv")
-insurance_trends <- read_csv("auto_2004_2020.csv")
+suvs_trends <- read_csv("trucks_suvs_2004_2020.csv")
+insurance_trends <- read_csv("auto_insurance_2004_2020.csv")
 # rename
 names1<- names(suvs_trends)
 names2 <- names(insurance_trends)
@@ -396,22 +393,22 @@ summary(model_with_trend)
 #   mutate(suvs = (suvs-suvs[1])/max(suvs))
 
 # trend 2
-insurance_trends <- read_csv("auto_insurance_all.csv")
+insurance_trends <- read_csv("New_auto_insurance.csv")
 names2 <- names(insurance_trends)
 
 insurance_trends <- insurance_trends %>%
   rename(insurance = names2[2],
-         Period = Month) %>%
-  mutate(insurance=(insurance-insurance[1])/100)
+         Period = Month)%>%
+   mutate(insurance=(insurance-insurance[1])/max(insurance))
 
 # trend 3
-trucks_trends <- read_csv("trucks_2004_2011.csv")
+  trucks_trends <- read_csv("New_Trucks_suvs.csv")
 names3 <- names(trucks_trends)
 
 trucks_trends <- trucks_trends %>%
   rename(trucks = names3[2],
          Period = Month) %>%
-  mutate(trucks=(trucks-trucks[1])/100)
+   mutate(trucks=(trucks-trucks[1])/max(trucks))
 
 unadj_full <- sales %>% filter(Period <= "2011-07-01")
 
@@ -419,7 +416,7 @@ trends_full <- left_join(insurance_trends, trucks_trends, by = "Period") %>% mut
 # trends_2 <- left_join(insurance_trends, suvs_trends, by = "Period") 
 # trends_full <- left_join(trends_2, trucks_trends, by = "Period") %>% mutate(Period = as.Date(as.yearmon(Period, "%Y-%m")))
 #trends_full <- insurance_trends %>% mutate(Period = as.Date(as.yearmon(Period, "%Y-%m"))) 
-#trends_full <- suvs_trends %>% mutate(Period = as.Date(as.yearmon(Period, "%Y-%m"))) 
+#trends_full <- trucks_trends %>% mutate(Period = as.Date(as.yearmon(Period, "%Y-%m"))) 
 
 with_trends_full <- left_join(unadj_full, trends_full, by = "Period") %>% rename(sales = Value) 
 with_trends_full$sales = log(as.numeric(with_trends_full$sales))
@@ -437,7 +434,67 @@ summary(model1)
 
 model_with_trend <- lm(data = with_trends_full, sales~lag(sales, 1)+lag(sales,12) + insurance+ trucks)
 
-# model_with_trend <- lm(data = with_trends_full, sales~lag(sales, 1)+lag(sales,12) + suvs)
+#model_with_trend <- lm(data = with_trends_full, sales~lag(sales, 1)+lag(sales,12) + trucks)
+
+# summary table of the model
+summary(model_with_trend)
+
+
+## trying the transformation on trends
+
+#with_trends_full %>% View
+```
+
+
+
+
+
+
+
+
+```{r}
+# trend 1
+suvs_trends <- read_csv("New_Trucks_suvs.csv")
+names1<- names(suvs_trends)
+suvs_trends <- suvs_trends %>%
+  rename(suvs = names1[2],
+         Period = Month) %>%
+  mutate(suvs = (suvs-suvs[1])/max(suvs))
+
+# trend 2
+insurance_trends <- read_csv("New_auto_insurance.csv")
+names2 <- names(insurance_trends)
+
+insurance_trends <- insurance_trends %>%
+  rename(insurance = names2[2],
+         Period = Month)
+
+
+unadj_full <- sales %>% filter(Period <= "2011-07-01")
+
+trends_full <- left_join(insurance_trends, suvs_trends, by = "Period") %>% mutate(Period = as.Date(as.yearmon(Period, "%Y-%m")))
+# trends_2 <- left_join(insurance_trends, suvs_trends, by = "Period") 
+# trends_full <- left_join(trends_2, trucks_trends, by = "Period") %>% mutate(Period = as.Date(as.yearmon(Period, "%Y-%m")))
+#trends_full <- insurance_trends %>% mutate(Period = as.Date(as.yearmon(Period, "%Y-%m"))) 
+#trends_full <- trucks_trends %>% mutate(Period = as.Date(as.yearmon(Period, "%Y-%m"))) 
+
+with_trends_full <- left_join(unadj_full, trends_full, by = "Period") %>% rename(sales = Value) 
+with_trends_full$sales = log(as.numeric(with_trends_full$sales))
+
+
+# apply lm(). lag() is used to capture y_t-1 and y_t-12
+model1 <- lm(data = with_trends_full, sales~lag(sales, 1)+lag(sales,12))
+
+#the summary of the model
+summary(model1)
+
+
+
+# model with trends
+
+model_with_trend <- lm(data = with_trends_full, sales~lag(sales, 1)+lag(sales,12) + insurance+ suvs)
+
+#model_with_trend <- lm(data = with_trends_full, sales~lag(sales, 1)+lag(sales,12) + trucks)
 
 # summary table of the model
 summary(model_with_trend)

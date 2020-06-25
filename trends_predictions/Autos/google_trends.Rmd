@@ -1,0 +1,109 @@
+---
+title: "Google Trends Prediction"
+date: '`r Sys.time()`'
+output:
+  html_document:
+    #code_folding: hide
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(scales)
+library(modelr)
+library(lubridate)
+library(readr)
+library(dplyr)
+
+# set plot theme
+theme_set(theme_bw())
+```
+
+# This is a replication of the result of a paper conducted by Choi and Varian to "nowcast" differnt economic variables from google trends data.   
+
+# We're taking the cleaned data used for the paper(2004-1011) and taking the log of the features. 
+```{r}
+auto <- read_csv("merged.csv")
+
+auto_sales <- auto %>% 
+  mutate(lag_1 = lag(sales, 1), 
+         lag_12 = lag(sales,12),log_sales =log(sales))
+auto_sales
+
+```
+
+# According to the paper the model they used for nowcasting is an  AR-1 model yt = b1yt−1 + b12yt−12 + et for the period 2004-01-01 to 2011-07-01 where yt is the log of the observation at time t.
+
+# So we applied the same model for both the base and trends data. We get the same table as they have on the paper including the R^2 and coefficients.
+```{r}
+model_base <- lm(log_sales ~ log(lag_1) + log(lag_12), data = auto_sales)
+
+model_trends <- lm(log_sales ~ log(lag_1) + log(lag_12) + suvs + insurance, data = auto_sales)
+```
+
+
+# Now we use a rolling window forecast approach like the one they did on the paper to use the data from K(which they chose to be 17) upto t-1 to estimate the model. 
+
+```{r}
+rolling_base <- lm(log_sales ~ log(lag_1) + 
+                   log(lag_12), data = auto_sales[1:17,])
+
+rolling_trends <- lm(log_sales ~ log(lag_1) + log(lag_12) + 
+                  suvs + insurance, data = auto_sales[1:17,])
+
+rolling_all <- auto_sales %>% mutate(base = 0, trends= 0, actual = 
+                log_sales) 
+
+rolling_all
+
+
+K <- 18:91
+
+for (k in K){
+   
+  rolling_base <- lm(actual ~ log(lag_1) + log(lag_12), data =       rolling_all[1:k-1,])
+   
+   rolling_trends <- lm(actual ~ log(lag_1) + log(lag_12) + suvs + insurance, data = rolling_all[1:k-1,])
+   
+   
+   rolling_all$base[k] <- predict(rolling_base, rolling_all[k,]) 
+   
+   rolling_all$trends[k] <- predict(rolling_trends, rolling_all[k,])
+  
+}
+```
+
+
+# Now we can plot our actual plus base and trends predictions to see if they have great disparities and to compare them.
+
+```{r}
+plot_data <- rolling_all %>% 
+  select(Period, base,trends,actual) %>% 
+  pivot_longer(names_to = "label", values_to = "value", -Period)
+
+plot_data %>% 
+  ggplot(aes(x=Period, y = value, color = label, linetype = label))+  
+  geom_line(aes(y = value, color = label, linetype= label))+
+  scale_colour_manual(values=c("black", "red","grey"))+          
+  scale_linetype_manual(values = c("solid", "dashed", "solid"))+
+  xlab('Index')+ ylab('log(mvp')
+```
+
+# we calculate the mean absolute error. 
+```{r}
+
+mae_base <- mean(abs(rolling_all$log_sales - rolling_all$base))
+
+mae_trends <- mean(abs(rolling_all$log_sales - rolling_all$trends))
+
+
+
+```
+
+
+
+
+
+

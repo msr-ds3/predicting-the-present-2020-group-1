@@ -38,7 +38,7 @@ We are replicating the result from paper [Predicting the Present with Google Tre
 ## Replication with authors' data
 ### Replicate baseline seasonal AR-1 model
 
-We began the replcation process by using the data that was used for the paper. According to the paper, the model follows the form of $y_t = b_1y_{t-1}+b12y_{t-12}+e_t$(AR-1 model). We used the codes below to obtain the same summary table to the model.
+We began the replication process by using the data that was used for the paper. According to the paper, the model follows the form of $y_t = b_1y_{t-1}+b12y_{t-12}+e_t$(AR-1 model). We used the codes below to obtain the same summary table to the model.
 
 ```{r}
 # load the data that was used for the paper
@@ -64,8 +64,9 @@ According to the paper, we added two trends, *Trucks & SUVs* and *Automotive Ins
 ```{r}
 # model with trends
 model_with_trend <- lm(data = merged, sales~lag(sales, 1)+lag(sales,12) + suvs + insurance)
-
+model.matrix(lm(data = merged, sales~lag(sales, 1)+lag(sales,12) + suvs + insurance))
 # summary table of the model
+
 summary(model_with_trend)
 ```
 
@@ -75,7 +76,7 @@ Once again, The summary we obtained is identical to the paper.
 
 The authors used rolling window forecast to confirm that the Trends variables improve out-of-sample forecasting. 
 What is rolling window forecast? 
-That's say now is July, 2015. We would use all the actual data that is available to train a model and predict August, 2015. We'll keep this predicted value aside. Imagine now is August, 2015, we have all the atual data(up to July, 2015) avaiable to train another model to predict September, 2015. Repeat this process for baseline model and the model with trends. 
+That's say now is July, 2015. We would use all the actual data that is available to train a model and predict August, 2015. We'll keep this predicted value aside. Imagine now is August, 2015, we have all the actual data(up to July, 2015) available to train another model to predict September, 2015. Repeat this process for baseline model and the model with trends. 
 
 ```{r}
 
@@ -209,17 +210,18 @@ ggplot(joined_data, aes(x = sales, y = unadjusted_sales)) +
   ggtitle("original sales against unadjusted sales")
 ```
 
-From the first graph, we can see that the sales values from both original and unajusted are very close to each other(almost overlapping). When I plotted originaldata against unadjusted data, they almost lined up on the diagonal. Note that original is always less than unadjusted. I wonder if people went back and modified that data after the authors obtained the data. Further investigation is needed. In conclusion, the unadjusted data we found is very close to the original data. 
+From the first graph, we can see that the sales values from both original and unajusted are very close to each other(almost overlapping). When I plotted original data against unadjusted data, they almost lined up on the diagonal. Note that original is always less than unadjusted. I wonder if people went back and modified that data after the authors obtained the data. Further investigation is needed. In conclusion, the unadjusted data we found is very close to the original data. 
 
 ### Attempts to find the transformation on Google Trends data in original data
 
-The authors did not specify what kind of transformation/normalization/standarlization they performed on Google Trends data. 
+The authors did not specify what kind of transformation/normalization/standardization they performed on Google Trends data. 
 Below is what we have tried to transform trends data.
+
 1. new_value = (old_value-first_observed_value)/max(old_value)
 2. Min-Max Normalization
 3. Use scale()
 
-None of these match with the original data. Therefore, we decided to process without any transformtion on Google Trends data. 
+None of these match with the original data. Therefore, we decided to process without any transformation on Google Trends data. 
 
 We also tried other key words like "Buy car", "car dealer", "Vehicle shop", but none of these were significant to the model
 
@@ -298,7 +300,7 @@ ggplot(plot_data, aes(x=Period, y = sales, color = label, linetype = label))+
   xlab('Index')
 ```
 
-From the graph, we see that lines are almost overlaped, and $R^2$ are very close to the ones from original data. 
+From the graph, we see that lines are almost overlapped, and $R^2$ are very close to the ones from original data. 
 
 
 
@@ -343,19 +345,26 @@ model1 <- lm(data = with_trends_full, sales~lag(sales, 1)+lag(sales,12))
 # summary of model1
 tidy(model1)
 m1 <- glance(model1)
-# model with trends
-model_with_trend <- lm(data = with_trends_full, sales~lag(sales, 1)+lag(sales,12) + insurance+ suvs)
 
+
+# model with previous month's trends data
+model_with_trend_pre_month <- lm(data = with_trends_full, sales~lag(sales, 1)+lag(sales,12) +lag(suvs,1) + lag( insurance,1))
+tidy(model_with_trend_pre_month)
+mtp<-glance(model_with_trend_pre_month)
+
+
+# model with current month's trends(we don't have weekly data, so we are using the monthly data instead)
+model_with_trend_current <- lm(data = with_trends_full, sales~lag(sales, 1)+lag(sales,12) + suvs + insurance)
 # summary table of the model
 # summary(model_with_trend)
-tidy(model_with_trend)
-mt<-glance(model_with_trend)
+tidy(model_with_trend_current)
+mtc<-glance(model_with_trend_current)
 ```
 
-The $R^2$ for base model is `r m1$r.squared`, and The $R^2$ for base model is `r mt$r.squared`. We see an improvement in overall fitting. We will further investigate if this is true with out-of-sample forcasting.
+The $R^2$ for base model is `r m1$r.squared`, the $R^2$ for the model with trends data from previous month is `r mtp$r.squared`, and the $R^2$ for the model with trends data from current month is `r mtc$r.squared`. We see an improvement in overall fitness when trends data were from current month (since we don't have access to the trends data of the first week of the month, we are using the month data as an estimator). We will further investigate if this is true with out-of-sample forecasting.
 
 
-### Evaluate the model by using rolling window forecast starting from 2005-07-01
+### Evaluate the model by using rolling window forecast starting from 2005-07-01(with trends data from current month)
 
 ```{r}
 base <- with_trends_full
@@ -428,8 +437,8 @@ recession_improv <- (mean(abs(recession_base$sales-recession_actual$sales))-mean
 r_sqr_base <-(cor(base$sales,actual$sales))^2
 
 # R^2 for trends
-r_sqr_trends <- (cor(trends$sales[3:73],actual$sales[3:73]))^2
-
+# r_sqr_trends <- (cor(trends$sales[3:73],actual$sales[3:73]))^2
+r_sqr_trends <- (cor(trends$sales,actual$sales))^2
 #We can use MAE() from caret package to calculate MAE
 # 
 # library(caret)
@@ -449,7 +458,7 @@ The MAE for base model is `r MAE_base`, and the MAE for the model with trends is
 
 # Extensions
 
-### Replication using all available data  01/01/2004 -05/01/2020 
+### Replication with data between 08/01/2011- 12/01/2019 
 
 ```{r}
 suvs_trends <- read_csv("trucks_suvs_2004_2020.csv")
@@ -464,8 +473,10 @@ insurance_trends <- insurance_trends %>%
   rename(insurance = names2[2], 
          Period = Month)
 
-unadj_full <- sales %>% filter(Period <= "2020-05-01")
+start_month <- "2011-07-01" # "2004-01-01"
+end_month <- "2019-12-01"   # "2020-05-01"
 
+unadj_full <- sales %>% filter(Period <= end_month & Period >start_month)
 trends_full <- left_join(insurance_trends, suvs_trends, by = "Period") %>% mutate(Period = as.Date(as.yearmon(Period, "%Y-%m"))) 
 with_trends_full <- left_join(unadj_full, trends_full, by = "Period") %>% rename(sales = Value) 
 with_trends_full$sales = log(as.numeric(with_trends_full$sales))
@@ -518,19 +529,26 @@ ggplotly(ggplot(plot_data, aes(x=Period, y = sales, color = label, linetype = la
   scale_linetype_manual(values = c("solid", "dashed", "solid"))+
   ylab('log(mvp)')+
   xlab('Index'))
+
+# R^2 for baseline model 
+r_sqr_base <-(cor(base$sales,actual$sales))^2
+
+# R^2 for model with trends
+
+r_sqr_trends <- (cor(trends$sales,actual$sales))^2
 ```
 
-*Add commends here* 
+We applied the same procedures to data between `r start_month` and `r end_month`. We don't see much improvement on the fitness of the model. When we applied rolling window forecasting, we got $R^2$ = `r r_sqr_base` for baseline model, and $R^2$ = `r r_sqr_trends`. This is suggesting that adding trends data to the model may decreases prediction accuracy. We also tried this procedure with data from different time period, the results are similar. 
 
 
-## Forecasting with new model
+### Forecasting with new model
 
-We want forcast by using the model $y_t+2=b_1y_{t}+b_2y_{t-12} + e_t$. We'll use rolling window forcast to evaluate our model. At the end, We will try to predict the sales of July, 2020. 
+We would to like to explore new models for forecasting and nowcasting. We examined *how many * models. *ADD more here* At the end, We will try to predict the sales of July, 2020 using these models. 
 
-commend on *yearly trends*
+* We want forecast by using the baseline model $y_{t+2}=b_1y_{t}+b_2y_{t-12} + e_t$ and the model $y_{t+2}=b_1y_{t}+b_2y_{t-12} + b_3insurance + b_4SUVs + e_t$ (search data from month t). We'll use rolling window forecast to evaluate our model(from 01/01/2017 to 01/01/2019) . 
+
 
 ```{r}
-
 ## getting data ready
 suvs_trends <- read_csv("trucks_suvs_2004_2020.csv")
 insurance_trends <- read_csv("auto_insurance_2004_2020.csv")
@@ -544,45 +562,46 @@ suvs_trends <- suvs_trends %>%
 insurance_trends <- insurance_trends %>% 
   rename(insurance = names2[2], 
          Period = Month)
-
 unadj_full <- sales %>% filter(Period <= "2020-05-01")
 
+
+##Join data
 trends_full <- left_join(insurance_trends, suvs_trends, by = "Period") %>% mutate(Period = as.Date(as.yearmon(Period, "%Y-%m"))) 
 with_trends_full <- left_join(unadj_full, trends_full, by = "Period") %>% rename(sales = Value) 
 with_trends_full$sales = log(as.numeric(with_trends_full$sales))
 #with_trends_full$sales = as.numeric(with_trends_full$sales)
 
 
-## starting from 2018
-whole_data_2018 <- with_trends_full %>% 
-  filter(Period >="2015-01-01") # we want to predict 2018-01-01 when it is 2017-10-01, we need data from 2016-10-01 
-#months <- nrow(whole_data_2018)
-months <- 60
+## starting from 2017
+whole_data_2017 <- with_trends_full %>% 
+  filter(Period >="2013-01-01" & Period <="2019-01-01") # we want to start predict 2017-01-01 when it is 2016-10-01, we need data from at least from 2015-10-01 (We want more data before first prediction to train a good model)
+months <- nrow(whole_data_2017)
+
  
-base <- whole_data_2018
-start <- 37
+base <- whole_data_2017
+start <- 46 # the index for 2016-10-01
 # creating predicted base with rolling window nowcast
 for (i in start:months){
-  merged_t <- whole_data_2018[1:i-1,]
+  merged_t <- whole_data_2017[1:i-1,]
   model1 <- lm(data = merged_t, sales~lag(sales, 2)+lag(sales,14))
-  base$sales[i] <- predict(model1,whole_data_2018[1:i,])[i]
+  base$sales[i] <- predict(model1,whole_data_2017[1:i,])[i]
 }
 base <- base[start:months,]
 
 
 # creating predicted trends with rolling window nowcast
 
-trends <- whole_data_2018
+trends <- whole_data_2017
 for (i in start:months){
-  merged_t <- whole_data_2018[1:i-1,]
-  model1 <- lm(data = merged_t, sales~lag(sales, 2)+lag(sales,14)+ suvs + insurance)
-  trends$sales[i] <- predict(model1,whole_data_2018[1:i,])[i]
+  merged_t <- whole_data_2017[1:i-1,]
+  model1 <- lm(data = merged_t, sales~lag(sales, 2)+lag(sales,14)+ lag(suvs,2) + lag(insurance,2)) # we used search data from the month when we were making the prediction
+  trends$sales[i] <- predict(model1,whole_data_2017[1:i,])[i]
 }
 trends <- trends[start:months,]
 
 # Make the graph
 
-actual <- whole_data_2018[start:months,]
+actual <- whole_data_2017[start:months,]
 actual <- actual %>% 
   mutate(label ="actual")
 base <- base %>% 
@@ -609,18 +628,77 @@ MAE(base$sales, actual$sales)
 (cor(trends$sales,actual$sales))^2
 ```
 
+Both models performed terribly. We were curious about the reason. We plotted Period VS sales for data from 01/01/2004 through 05/01/2020. 
 
-The model did very bad. observed yearly trends
 
 ```{r}
 # yearly trends
 ggplotly(ggplot(with_trends_full, aes(x = Period, y = sales)) + geom_line())
 ```
 
+From this graph, we observed annual trend. The beginning  and the  end of a year tend to be the lowest point, mid-year tends to be the highest point, and the overall sales is increase(exceptions during the recession and 2020). This explains why the model $y_{t+2}=b_1y_{t}+b_2y_{t-12} + e_t$ performed poorly. In this model, we used data from current month and 12 months ago to predict what would happen two month later. This violates the annual trend the sales obeys.  
 
 
+
+* Inspired by the annual trend, we want to test a different model for forecasting.  $y_t=b_1y_{t-12}+b_2y_{t-24}+b_3y_{t-36}+b_4y_{t-48}+b_5insurance + b_6SUVs$ Since there is a strong annual trend, we wonder if use the data from previous years of the same month as a predictor will give us a better model. 
+
+we used data from 2012-01-01 through 2018-12-01 to train the model, and make predict what would the sales for the whole year of 2019. 
+
+Note: we tried to use different time period for training the model. It appears that use data previous 6 years of data to train the model is best. 
+
+```{r}
+
+# Used data from 2012-01-01 through 2018-12-01 to train the model
+training_data <- with_trends_full %>% 
+  filter(Period >="2012-01-01"& Period <="2018-12-01")
+
+# I'm using trends data from previous year of the same month for training
+model_with_trend_all <- lm(data = training_data , sales~lag(sales, 12)+lag(sales, 24)+lag(sales, 36)+lag(sales, 48)+ lag(insurance,12) + lag(suvs,12))
+summary(model_with_trend_all)
+
+model_with_trend_2 <- lm(data = training_data , sales~lag(sales, 12)+lag(sales, 48)+ lag(insurance,12) + lag(suvs,12))
+summary(model_with_trend_2)
+
+model_without_trend <- lm(data = training_data , sales~lag(sales, 12)+lag(sales, 48))
+summary(model_without_trend)
+
+# we want to predict whole year of 2019, so we need data from 2015-01-01 and after 
+
+#Change here to see the graph of that model
+model <- model_with_trend_2
+
+# test_data <- with_trends_full %>%
+#   filter(Period >="2013-01-01")
+# predictions <- test_data %>%
+#   add_predictions(model) %>%
+#   filter(Period >= "2017-01-01" & Period <= "2018-01-01")
+# MSE <- mean((predictions$pred -predictions$sales)^2)
+
+
+test_data <- with_trends_full %>%
+  filter(Period >="2015-01-01" & Period < "2020-01-01")
+predictions <- test_data %>%
+  add_predictions(model) %>% 
+  filter(Period >= "2019-01-01" )
+
+
+MSE <- mean((predictions$pred -predictions$sales)^2)
+
+ggplotly(ggplot(predictions, aes(x=exp(predictions$sales), y = exp(predictions$pred)))+
+  geom_point() +
+  geom_abline()+
+  xlab("Sales")+
+  ylab("Prediction"))
+
+(cor(predictions$sales, predictions$pred))^2
+```
+We tried three version of this model, we found that model $y_t=b_1y_{t-12}b_4y_{t-48}+b_5insurance + b_6SUVs$ makes better prediction for year 2019. MSE = `r MSE` and $R^2$ = `r (cor(predictions$sales, predictions$pred))^2`
  
-with model $y_t = b_1y_{t-1}+b12y_{t-12}+e_t$(AR-1 model) much better performance
+ 
+ 
+ 
+ 
+* with model $y_t = b_1y_{t-1}+b12y_{t-12}+e_t$(AR-1 model) we observed a much better performance.However, we don't see any improvement on the model with trends data as pridictors
 ```{r}
 
 ## getting data ready
@@ -644,7 +722,6 @@ with_trends_full <- left_join(unadj_full, trends_full, by = "Period") %>% rename
 with_trends_full$sales = log(as.numeric(with_trends_full$sales))
 #with_trends_full$sales = as.numeric(with_trends_full$sales)
 
-ggplotly(ggplot(with_trends_full, aes(x = Period, y = sales)) + geom_line())
 
 ## starting from 2018
 whole_data_2018 <- with_trends_full %>% 
@@ -704,7 +781,7 @@ MAE(base$sales, actual$sales)
 
 
 
-## Predict June and July 2020 with variouse models 
+## Predict June and July 2020 with various models 
 
 1. With model $y_t = b_1y_{t-1}+b12y_{t-12}+e_t$(AR-1 model)
 

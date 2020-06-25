@@ -1,0 +1,98 @@
+---
+title: "Google Trends Prediction"
+author: "Iman Abakoyas (Lehman College)"
+date: "6/24/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(scales)
+library(modelr)
+library(lubridate)
+library(readr)
+library(dplyr)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+ 
+ 
+
+```{r}
+auto <- read_csv("merged.csv")
+
+auto_sales <- auto %>% 
+  mutate(lag_1 = lag(sales, 1), 
+         lag_12 = lag(sales,12),log_sales =log(sales))
+auto_sales
+
+```
+
+
+
+```{r}
+model_base <- lm(log_sales ~ log(lag_1) + log(lag_12), data = auto_sales)
+
+model_trends <- lm(log(sales) ~ log(lag_1) + log(lag_12) + suvs + insurance, data = auto_sales)
+
+```
+
+
+
+```{r}
+rolling_base <- lm(log_sales ~ log(lag_1) + 
+                   log(lag_12), data = auto_sales[1:17,])
+
+rolling_trends <- lm(log(sales) ~ log(lag_1) + log(lag_12) + 
+                  suvs + insurance, data = auto_sales[1:17,])
+
+rolling_all <- auto_sales %>% mutate(base = 0, trends= 0) 
+rolling_all
+
+
+```
+```{r}
+K <- 18:91
+
+for (k in K){
+   
+  rolling_base <- lm(log_sales ~ log(lag_1) + log(lag_12), data =       rolling_all[1:k-1,])
+   
+   rolling_trends <- lm(log(sales) ~ log(lag_1) + log(lag_12) + suvs + insurance, data = rolling_all[1:k-1,])
+   
+   
+   rolling_all$base[k] <- predict(rolling_base, rolling_all[k]) 
+   
+   rolling_all$trends[k] <- predict(rolling_trends, rolling_all[k])
+  
+}
+
+```
+
+ 
+```{r}
+
+plot_data <- rolling_all %>% 
+  select(Period, base,trends,log_sales) %>% 
+  pivot_longer(names_to = "label", values_to = "value", -Period)
+
+
+
+plot_data %>% 
+  ggplot(aes(x=Period, y = value, color = label, linetype = label))+  
+  geom_line(aes(y = value, color = label, linetype= label))+
+  scale_colour_manual(values=c("black", "red","grey"))+          
+  scale_linetype_manual(values = c("solid", "dashed", "solid"))+
+  xlab('Index')+ ylab('log(mvp')
+```
+```{r}
+mae_base <- mean(abs(rolling_all$log_sales - rolling_all$base))
+
+mae_trends <- mean(abs(rolling_all$log_sales - rolling_all$trends))
+
+```
+
+
+
+

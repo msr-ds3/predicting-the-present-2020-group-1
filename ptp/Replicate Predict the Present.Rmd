@@ -924,7 +924,7 @@ data_for_predict <- sales %>%
   left_join(with_trends_full, by = "Period") %>% 
   filter(Period >="2016-01-01")# 48 month before 2020-01-01
 
-summary(model1)
+#summary(model1)
 
 predicted <- testing_data %>% 
   add_predictions(model1) %>% 
@@ -932,10 +932,11 @@ predicted <- testing_data %>%
 
 pre <- predicted %>% select(Period,sales,pred) %>% mutate(sales= exp(sales), pred=exp(pred))
 
-knitr::kable(pre)
+knitr::kable(pre,format = "markdown")
 
 ```
 
+![](predictions.PNG)
 
 
 # Conclusion

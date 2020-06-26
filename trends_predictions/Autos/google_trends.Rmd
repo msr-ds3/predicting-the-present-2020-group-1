@@ -16,14 +16,21 @@ library(modelr)
 library(lubridate)
 library(readr)
 library(dplyr)
+library(zoo)
+
+library(broom)
+
+library(modelr)
+
+library(readxl)
 
 # set plot theme
 theme_set(theme_bw())
 ```
 
-# This is a replication of the result of a paper conducted by Choi and Varian to "nowcast" differnt economic variables from google trends data.   
+This is a replication of the result of a paper conducted by Choi and Varian to "nowcast" different economic variables from google trends data.   
 
-# We're taking the cleaned data used for the paper(2004-1011) and taking the log of the features. 
+We're taking the cleaned data used for the paper(2004-1011) and taking the log of the features. 
 ```{r}
 auto <- read_csv("merged.csv")
 
@@ -34,17 +41,19 @@ auto_sales
 
 ```
 
-# According to the paper the model they used for nowcasting is an  AR-1 model yt = b1yt−1 + b12yt−12 + et for the period 2004-01-01 to 2011-07-01 where yt is the log of the observation at time t.
+According to the paper the model they used for nowcasting is an  AR-1 model yt = b1yt−1 + b12yt−12 + et for the period 2004-01-01 to 2011-07-01 where yt is the log of the observation at time t.
 
-# So we applied the same model for both the base and trends data. We get the same table as they have on the paper including the R^2 and coefficients.
+So we applied the same model for both the base and trends data. We get the same table as they have on the paper including the R^2 and coefficients.
 ```{r}
 model_base <- lm(log_sales ~ log(lag_1) + log(lag_12), data = auto_sales)
+summary(model_base)
 
 model_trends <- lm(log_sales ~ log(lag_1) + log(lag_12) + suvs + insurance, data = auto_sales)
+summary(model_trends)
 ```
 
 
-# Now we use a rolling window forecast approach like the one they did on the paper to use the data from K(which they chose to be 17) upto t-1 to estimate the model. 
+Now we use a rolling window forecast approach like the one they did on the paper to use the data from K(which they chose to be 17) upto t-1 to estimate the model. 
 
 ```{r}
 rolling_base <- lm(log_sales ~ log(lag_1) + 
@@ -73,25 +82,31 @@ for (k in K){
    rolling_all$trends[k] <- predict(rolling_trends, rolling_all[k,])
   
 }
+rolling_all
 ```
 
 
-# Now we can plot our actual plus base and trends predictions to see if they have great disparities and to compare them.
+Now we can plot our actual plus base and trends predictions to see if they have any disparities and to compare them.
 
 ```{r}
-plot_data <- rolling_all %>% 
-  select(Period, base,trends,actual) %>% 
-  pivot_longer(names_to = "label", values_to = "value", -Period)
 
-plot_data %>% 
-  ggplot(aes(x=Period, y = value, color = label, linetype = label))+  
-  geom_line(aes(y = value, color = label, linetype= label))+
-  scale_colour_manual(values=c("black", "red","grey"))+          
-  scale_linetype_manual(values = c("solid", "dashed", "solid"))+
-  xlab('Index')+ ylab('log(mvp')
+rolling_all %>% pivot_longer(names_to = "label", values_to = "value", c("actual","base","trends")) %>% 
+ggplot(aes(x=Period, y = value,color = label, linetype = label))+ 
+geom_line(aes(y = value, color = label, linetype= label))+ 
+scale_colour_manual(values=c("black", "red","grey"))+ scale_y_log10() +
+scale_linetype_manual(values = c("solid", "dashed", "solid"))+
+xlab('Index')+ ylab('log(mvp')
+
+
+
+
+  
 ```
+We also get a plot that's very close to the original plot on the paper.
 
-# we calculate the mean absolute error. 
+
+
+we calculate the mean absolute error. 
 ```{r}
 
 mae_base <- mean(abs(rolling_all$log_sales - rolling_all$base))
@@ -101,6 +116,79 @@ mae_trends <- mean(abs(rolling_all$log_sales - rolling_all$trends))
 
 
 ```
+
+Trying out the model with raw data.
+Getting the data from 01/2004 - 07/2011, reading the data and joining sales, insurance and trucks & suvs data frame together.
+```{r}
+sales <- read_xls("sales.xls")
+year_month <- as.yearmon(sales$Period, "%b-%Y")
+sales$Period <- as.Date(year_month)
+
+insurance <- read_csv("New_auto_insurance.csv")
+insurance <- insurance %>% rename(Period = Month, insurance = `Geo: United States`)
+
+suvs <- read_csv("New_Trucks_suvs.csv")
+suvs <- suvs %>% rename(Period = Month, suvs = `Geo: United States`)
+
+insurance_suvs <- left_join(insurance, suvs, by = "Period") %>% 
+  mutate(Period = as.Date(as.yearmon(Period, "%Y-%m")))
+
+join_all <- left_join(insurance_suvs, sales, by = "Period") %>% mutate(sales = as.numeric(Value))
+join_all
+
+```
+
+Adding the baseline model to the combined data
+```{r}
+join_all <- join_all %>% mutate(mont_1 = lag(sales, 1), mont_12 = lag(sales,12), sales =log(sales))
+
+model_1 <- lm(sales ~ mont_1 + mont_12, data = join_all)
+summary(model_1)
+
+model_2 <- lm(sales ~ mont_1 + mont_12 + insurance + suvs, data = join_all)
+summary(model_2)
+
+
+```
+
+Now we're gonna use the rolling window forecasting model.
+```{r}
+new_join <- join_all %>% mutate(base = 0, trends = 0, actual = sales) 
+
+new_join
+
+K <- 18:91
+
+for (k in K){
+   
+  rolling_base <- lm(actual ~ mont_1 + mont_12, data = new_join[1:k-1,])
+   
+   rolling_trends <- lm(actual ~ mont_1 + mont_12 + suvs + insurance, data = new_join[1:k-1,])
+   
+   
+   new_join$base[k] <- predict(rolling_base, new_join[k,]) 
+   
+   new_join$trends[k] <- predict(rolling_trends, new_join[k,])
+  
+}
+new_join
+```
+
+Again, let's plot all of these together to get a sense of how they compare with another and also to compare the plot with the earlier plot that we did with the clean data.  
+
+```{r}
+new_join %>% pivot_longer(names_to = "label", values_to = "value", c("actual","base","trends")) %>% 
+ggplot(aes(x=Period, y = value,color = label, linetype = label))+ 
+geom_line(aes(y = value, color = label, linetype= label))+ 
+scale_colour_manual(values=c("black", "red","grey"))+ scale_y_log10() +
+scale_linetype_manual(values = c("solid", "dashed", "solid"))+
+xlab('Index')+ ylab('log(mvp')
+
+```
+
+Also a very similar plot to the other one. 
+
+
 
 
 

@@ -32,13 +32,13 @@ knitr::opts_chunk$set(
 ```
 
 # Introduction
-We are replicating the result from paper [Predicting the Present with Google Trends.](http://people.ischool.berkeley.edu/~hal/Papers/2011/ptp.pdf)
+We replicate some of the results from paper [Predicting the Present with Google Trends.](http://people.ischool.berkeley.edu/~hal/Papers/2011/ptp.pdf). We focused on 3.1 Motor vehicles and parts. We were able to replicate everything in that session using original data. There were many difficulties on finding the right data. 
 
 # Replicate results from 3.1 Motor vehicles and parts
 ## Replication with authors' data
 ### Replicate baseline seasonal AR-1 model
 
-We began the replication process by using the data that was used for the paper. According to the paper, the model follows the form of $y_t = b_1y_{t-1}+b12y_{t-12}+e_t$(AR-1 model). We used the codes below to obtain the same summary table to the model.
+We began the replication process by using the data that was used for the paper. According to the paper, the model follows the form of $y_t = b_1y_{t-1}+b_{12}y_{t-12}+e_t$(AR-1 model). We used the codes below to obtain the same summary table of the model.
 
 ```{r}
 # load the data that was used for the paper
@@ -74,9 +74,9 @@ Once again, the summary we obtained is identical to the paper.
 
 ### Replicate figure 2 
 
-The authors used rolling window forecast to confirm that the Trends variables improve out-of-sample forecasting. 
+The authors used rolling window forecast to confirm that the Google Trends data improves out-of-sample forecasting. 
 What is rolling window forecast? 
-That's say now is July, 2015. We would use all the actual data that is available to train a model and predict August, 2015. We'll keep this predicted value aside. Imagine now is August, 2015, we have all the actual data(up to July, 2015) available to train another model to predict September, 2015. Repeat this process for baseline model and the model with trends. 
+That's say now is July, 2005. We would use all the actual data that is available to train a model and predict August, 2005. We'll keep predicted value aside. Imagine now is August, 2005, we have all the actual data(up to July, 2005) available to train another model to predict September, 2005. Repeat this process for baseline model and the model with trends as predictors. 
 
 ```{r}
 
@@ -174,7 +174,7 @@ and
 
 ### Comparing sales data used in the paper with data we obtained from census.gov
 
-We noticed that the sales from the data we obtained was always less than the data used in the paper. We wanted to find out why.
+We noticed that the sales values from the data we obtained was always less than the data used in the paper.
 
 ```{r}
 # load the data
@@ -230,7 +230,7 @@ We also tried other key words like "Buy car", "car dealer", "Vehicle shop" and s
 
 ### Replicate the results again with unadjusted data from census.gov with trends data from original paper
 
-We would like to compare the outputs of unadjusted data with the outputs from the original data.
+We would like to compare the outputs of unadjusted data with the outputs from the original data with same trends data.
 
 ```{r}
 #take the log of sales, take out the label column
@@ -308,6 +308,7 @@ From the graph, we see that lines are almost overlapped, and $R^2$ are very clos
 
 ### Replicate the results with unadjusted data from census.gov and search data from Google Trends without unknown transformations 
 
+We found that the trends data was significant to the model even without the transformation for the time period 01/01/2004 to 07/01/2011. 
 
 ```{r}
 # trend 1 
@@ -366,6 +367,8 @@ The $R^2$ for base model is `r m1$r.squared`, the $R^2$ for the model with trend
 
 
 ### Evaluate the model by using rolling window forecast starting from 2005-07-01(with trends data from current month)
+
+We evaluated the model on out-of-sample forecasting, and we found that the trends data made the predictions less accurate. 
 
 ```{r}
 base <- with_trends_full
@@ -461,6 +464,8 @@ The MAE for base model is `r MAE_base`, and the MAE for the model with trends is
 
 ## Replication with data between 08/01/2011- 12/01/2019 
 
+The model produced higher $R^2$ for time period 08/01/2011 to 12/01/2019. However, the trends data did not improve the performance. 
+
 ```{r}
 suvs_trends <- read_csv("trucks_suvs_2004_2020.csv")
 insurance_trends <- read_csv("auto_insurance_2004_2020.csv")
@@ -542,12 +547,12 @@ ggplotly(ggplot(plot_data, aes(x=Period, y = sales, color = label, linetype = la
 
 ```
 
-We applied the same procedures to data between `r start_month` and `r end_month`. We don't see much improvement on the fitness of the model. When we applied rolling window forecasting, we got $R^2$ = `r r_sqr_base` for baseline model, and $R^2$ = `r r_sqr_trends`. This is suggesting that adding trends data to the model may decreases prediction accuracy. We also tried this procedure with data from different time period, the results are similar. 
+For data between `r start_month` and `r end_month`. We don't see much improvement on the fitness of the model when trends data was included. When we applied rolling window forecasting, we got $R^2$ = `r r_sqr_base` for baseline model, and $R^2$ = `r r_sqr_trends` for the model with trends data. This is suggesting that adding trends data to the model may decreases prediction accuracy. We also tried this procedure with data from different time period, the results are similar. 
 
 
 ## Forecasting with new model
 
-We would to like to explore new models for forecasting and nowcasting. We examined *how many * models. *ADD more here* At the end, We will try to predict the sales of July, 2020 using these models. 
+We would to like to explore new models for forecasting. We examined two models. At the end, We will try to predict the sales of July, 2020 using these models. 
 
 ### Model 1: $y_{t+2}=b_1y_{t}+b_2y_{t-12} + e_t$ 
 
@@ -634,7 +639,7 @@ MAE(base$sales, actual$sales)
 (cor(trends$sales,actual$sales))^2
 ```
 
-Both models performed terribly. We were curious about the reason. We plotted Period VS sales for data from 01/01/2004 through 05/01/2020. 
+Both models performed badly. We were curious about the reason. We plotted Period VS sales for data from 01/01/2004 through 05/01/2020. 
 
 
 ```{r}
@@ -642,7 +647,7 @@ Both models performed terribly. We were curious about the reason. We plotted Per
 ggplotly(ggplot(with_trends_full, aes(x = Period, y = sales)) + geom_line())
 ```
 
-From this graph, we observed annual trend. The beginning  and the  end of a year tend to be the lowest point, mid-year tends to be the highest point, and the overall sales is increase(exceptions during the recession and 2020). This explains why the model $y_{t+2}=b_1y_{t}+b_2y_{t-12} + e_t$ performed poorly. In this model, we used data from current month and 12 months ago to predict what would happen two month later. This violates the annual trend the sales obeys.  
+From this graph, we observed annual trend. The beginning  and the  end of a year tend to be the lowest point, mid-year tends to be the highest point, and the overall sales is increasing (exceptions during the recession and 2020). This explains why the model $y_{t+2}=b_1y_{t}+b_2y_{t-12} + e_t$ performed poorly. In this model, we used data from current month and 12 months ago to predict what would happen two month later. This violates the annual trend the sales data obeys.  
 
 
 ### Model 2: $y_t=b_1y_{t-12}+b_4y_{t-48}+b_5insurance + b_6SUVs$
@@ -651,7 +656,7 @@ Inspired by the annual trend, we want to test a different model for forecasting.
 
 we used data from 2012-01-01 through 2018-12-01 to train the model, and predict what would the sales be for the whole year of 2019. 
 
-Note: we tried to use data from different time periods as training data for the model. It appears that use data from previous 6 years of data to train the model is best. 
+Note: we tried to use data from different time periods as training data for the model. It appears that use data from previous 6 years to train the model is the best. 
 
 ```{r}
 
@@ -661,26 +666,18 @@ training_data <- with_trends_full %>%
 
 # I'm using trends data from previous year of the same month for training
 model_with_trend_all <- lm(data = training_data , sales~lag(sales, 12)+lag(sales, 24)+lag(sales, 36)+lag(sales, 48)+ lag(insurance,12) + lag(suvs,12))
-summary(model_with_trend_all)
+#summary(model_with_trend_all)
 
 model_with_trend_2 <- lm(data = training_data , sales~lag(sales, 12)+lag(sales, 48)+ lag(insurance,12) + lag(suvs,12))
 summary(model_with_trend_2)
 
 model_without_trend <- lm(data = training_data , sales~lag(sales, 12)+lag(sales, 48))
-summary(model_without_trend)
+#summary(model_without_trend)
 
 # we want to predict whole year of 2019, so we need data from 2015-01-01 and after 
 
 #Change here to see the graph of that model
 model <- model_with_trend_2
-
-# test_data <- with_trends_full %>%
-#   filter(Period >="2013-01-01")
-# predictions <- test_data %>%
-#   add_predictions(model) %>%
-#   filter(Period >= "2017-01-01" & Period <= "2018-01-01")
-# MSE <- mean((predictions$pred -predictions$sales)^2)
-
 
 test_data <- with_trends_full %>%
   filter(Period >="2015-01-01" & Period < "2020-01-01")
@@ -699,10 +696,10 @@ ggplotly(ggplot(predictions, aes(x=exp(predictions$sales), y = exp(predictions$p
 
 (cor(predictions$sales, predictions$pred))^2
 ```
-We tried three versions of this model, we found that model $y_t=b_1y_{t-12}b_4y_{t-48}+b_5insurance + b_6SUVs$ makes better predictions for year 2019. MSE = `r MSE` and $R^2$ = `r (cor(predictions$sales, predictions$pred))^2`. Since this model works especially well. I would like to know its performs on other years. 
+We tried three versions of this model, we found that model $y_t=b_1y_{t-12}b_4y_{t-48}+b_5insurance + b_6SUVs$ makes better predictions for year 2019. MSE = `r MSE` and $R^2$ = `r (cor(predictions$sales, predictions$pred))^2`. Since this model works especially well. I would like to know its performance on other years. The $R^2$ = 0.9712654 for the predictions on 2015. The lowest $R^2$ was 0.8812861 on 2017's predictions for years from 2018-2014. 
 
 
-**test the model on 2018**
+**Test the model on 2018**
 
 ```{r}
 # Used data from 2011-01-01 through 2017-12-01 to train the model
@@ -727,7 +724,8 @@ ggplotly(ggplot(predictions, aes(x=exp(predictions$sales), y = exp(predictions$p
 (cor(predictions$sales, predictions$pred))^2
 ```
 
-**test the model on 2017**
+
+**Test the model on 2017**
 
 
 ```{r}
@@ -754,7 +752,7 @@ ggplotly(ggplot(predictions, aes(x=exp(predictions$sales), y = exp(predictions$p
 ```
 
 
-**test the model on 2016**
+**Test the model on 2016**
 
 ```{r}
 # Used data from 2009-01-01 through 2015-12-01 to train the model
@@ -779,7 +777,7 @@ ggplotly(ggplot(predictions, aes(x=exp(predictions$sales), y = exp(predictions$p
 (cor(predictions$sales, predictions$pred))^2
 ```
 
-**test the model on 2015**
+**Test the model on 2015**
 
 ```{r}
 # Used data from 2008-01-01 through 2014-12-01 to train the model
@@ -805,7 +803,7 @@ ggplotly(ggplot(predictions, aes(x=exp(predictions$sales), y = exp(predictions$p
 ```
 
 
-**test the model on 2014**
+**Test the model on 2014**
 
 ```{r}
 # Used data from 2007-01-01 through 2014-12-01 to train the model
@@ -830,11 +828,11 @@ ggplotly(ggplot(predictions, aes(x=exp(predictions$sales), y = exp(predictions$p
 (cor(predictions$sales, predictions$pred))^2
 ```
 
-
+In conclusion, this model works well when predicting other years as well. 
 
 ## Predict June and July 2020 with various models 
 
-We want to predict June and/or July with the models we examined above. The tricky part is that how much data should we use to train the model. We believe that using recently data would be more helpful. To decide what data we would use to train the model, we were changing the training data and test it bu predicting sales of 2019. When we are satisfied with the model, we use it to predict June and or July. We don't expect the prediction to be accurate since 2020 is such a special year
+We want to predict June and/or July with the models we examined above. The tricky part is that how much data should we use to train the model. We believe that using more recent data would be more helpful. To decide what data we would use to train the model, we were changing the training data and test it by predicting the sales of 2019. When we are satisfied with the model, we use it to predict June and/or July. We don't expect the prediction to be accurate since 2020 is such a special year
 
 ### 1. With model $y_t = b_1y_{t-1}+b_12y_{t-12}+e_t$(AR-1 model)
 
@@ -869,6 +867,7 @@ June
 sales_2019_07 <- as.numeric(with_trends_full %>% filter(Period == "2019-07-01") %>% select(sales))
 July <-  exp(n$estimate[1] +n$estimate[2]*log(June)+n$estimate[3]*sales_2019_07)
 July
+
 ```
 
 
@@ -931,14 +930,17 @@ predicted <- testing_data %>%
   add_predictions(model1) %>% 
   filter(!(is.na(pred)))
 
-predicted %>% select(Period,sales,pred) %>% mutate(sales= exp(sales), pred=exp(pred))
+pre <- predicted %>% select(Period,sales,pred) %>% mutate(sales= exp(sales), pred=exp(pred))
+
+knitr::kable(pre)
+
 ```
 
 
 
+# Conclusion
 
-
-
+In conclusion, the hardest part of replicating results of published paper is obtaining the data. It was fun! 
 
 
 

@@ -1,2 +1,2 @@
 # predicting-the-present-2020-group-1
-Link to .Rmd file https://rawcdn.githack.com/msr-ds3/predicting-the-present-2020-group-1/89d2c63ac53b236be8729209edbe32c158c84be2/ptp/Replicate-Predict-the-Present.html
+Link to .Rmd file in html  https://rawcdn.githack.com/msr-ds3/predicting-the-present-2020-group-1/0f691379245c61733fa732c852a91cbf7c0ce96e/ptp/Replicate-Predict-the-Present.html

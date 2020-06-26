@@ -308,7 +308,7 @@ From the graph, we see that lines are almost overlapped, and $R^2$ are very clos
 
 ### Replicate the results with unadjusted data from census.gov and search data from Google Trends without unknown transformations 
 
-We found that the trends data was significant to the model even without the transformation for the time period 01/01/2004 to 07/01/2011. 
+The current month's trends data was significant to the model even without the transformation during the time period 01/01/2004 to 07/01/2011. We used current month's trends data as an estimator of the first week of the month since weekly data was not available. 
 
 ```{r}
 # trend 1 
@@ -363,12 +363,12 @@ tidy(model_with_trend_current)
 mtc<-glance(model_with_trend_current)
 ```
 
-The $R^2$ for base model is `r m1$r.squared`, the $R^2$ for the model with trends data from previous month is `r mtp$r.squared`, and the $R^2$ for the model with trends data from current month is `r mtc$r.squared`. We see an improvement in overall fitness when trends data were from current month (since we don't have access to the trends data of the first week of the month, we are using the month data as an estimator). We will further investigate if this is true with out-of-sample forecasting.
+The $R^2$ for base model is `r m1$r.squared`, the $R^2$ for the model with trends data from previous month is `r mtp$r.squared`, and the $R^2$ for the model with trends data from current month is `r mtc$r.squared`. We see an improvement in overall fitness when trends data were from current month (since we don't have access to the trends data of the first week of the month, we are using the monthly data as an estimator). We will further investigate if this is true with out-of-sample forecasting.
 
 
 ### Evaluate the model by using rolling window forecast starting from 2005-07-01(with trends data from current month)
 
-We evaluated the model on out-of-sample forecasting, and we found that the trends data made the predictions less accurate. 
+We evaluated the model by out-of-sample forecasting, and we found that the trends data made the predictions less accurate. 
 
 ```{r}
 base <- with_trends_full
@@ -456,7 +456,7 @@ r_sqr_trends <- (cor(trends$sales,actual$sales))^2
 
 ```
 
-The MAE for base model is `r MAE_base`, and the MAE for the model with trends is `r MAE_trends`. The overall improvement is `r overall_improv*100`%. That means adding trends to the model make things worse. We see a totally different story when forces on recession period. The MAE for base model is `r MAE_recession_base`, and the MAE for the model with trends is `r MAE_recession_trends` during the recession. There is `r recession_improv*100`% improvement after adding trends to the model. 
+The MAE for base model is `r MAE_base`, and the MAE for the model with trends is `r MAE_trends`. The overall improvement is `r overall_improv*100`%. That means adding trends to the model make things worse. We see a totally different story when focus on recession period. The MAE for base model is `r MAE_recession_base`, and the MAE for the model with trends is `r MAE_recession_trends` during the recession. There is `r recession_improv*100`% improvement after adding trends to the model. 
 
 
 
@@ -556,7 +556,7 @@ We would to like to explore new models for forecasting. We examined two models. 
 
 ### Model 1: $y_{t+2}=b_1y_{t}+b_2y_{t-12} + e_t$ 
 
-We want forecast by using the baseline model $y_{t+2}=b_1y_{t}+b_2y_{t-12} + e_t$ and the model $y_{t+2}=b_1y_{t}+b_2y_{t-12} + b_3insurance + b_4SUVs + e_t$ (search data from month t). We'll use rolling window forecast to evaluate our model(from 01/01/2017 to 01/01/2019) . 
+We wanted to forecast by using the baseline model $y_{t+2}=b_1y_{t}+b_2y_{t-12} + e_t$ and the model $y_{t+2}=b_1y_{t}+b_2y_{t-12} + b_3insurance + b_4SUVs + e_t$ (search data from month t). We used rolling window forecast to evaluate our model(from 01/01/2017 to 01/01/2019) . 
 
 
 ```{r}
@@ -628,11 +628,13 @@ ggplotly(ggplot(plot_data, aes(x=Period, y = sales, color = label, linetype = la
   xlab('Index'))
 
 
-
+# MAE for trends 
 MAE(trends$sales, actual$sales)
+#MAE for baseline model
 MAE(base$sales, actual$sales)
+# improvement
 (MAE(base$sales, actual$sales)-MAE(trends$sales, actual$sales))/MAE(base$sales, actual$sales)
-#R^2 for base
+#R^2 for baseline model
 (cor(base$sales,actual$sales))^2
 
 # R^2 for trends
@@ -644,15 +646,15 @@ Both models performed badly. We were curious about the reason. We plotted Period
 
 ```{r}
 # yearly trends
-ggplotly(ggplot(with_trends_full, aes(x = Period, y = sales)) + geom_line())
+ggplotly(ggplot(with_trends_full, aes(x = Period, y = exp(sales))) + geom_line())
 ```
 
-From this graph, we observed annual trend. The beginning  and the  end of a year tend to be the lowest point, mid-year tends to be the highest point, and the overall sales is increasing (exceptions during the recession and 2020). This explains why the model $y_{t+2}=b_1y_{t}+b_2y_{t-12} + e_t$ performed poorly. In this model, we used data from current month and 12 months ago to predict what would happen two month later. This violates the annual trend the sales data obeys.  
+From this graph, we observed annual trend. The beginning and the  end of a year tend to be the lowest point, mid-year tends to be the highest point, and the overall sales is increasing (exceptions during the recession and 2020). This explains why the model $y_{t+2}=b_1y_{t}+b_2y_{t-12} + e_t$ performed poorly. In this model, we used data from current month and 12 months ago to predict what would happen two month later. This violates the annual trend the sales data obeys.  
 
 
 ### Model 2: $y_t=b_1y_{t-12}+b_4y_{t-48}+b_5insurance + b_6SUVs$
 
-Inspired by the annual trend, we want to test a different model for forecasting.  $y_t=b_1y_{t-12}+b_2y_{t-24}+b_3y_{t-36}+b_4y_{t-48}+b_5insurance + b_6SUVs$ Since there is a strong annual trend, we wonder if use the data from previous years of the same month as a predictor will give us a better model. 
+Inspired by the annual trend, we want to test a different model for forecasting.  $y_t=b_1y_{t-12}+b_2y_{t-24}+b_3y_{t-36}+b_4y_{t-48}+b_5insurance + b_6SUVs$ Since there is a strong annual trend, we wonder if use the data from previous years of the same month as a predictors will give us a better model. 
 
 we used data from 2012-01-01 through 2018-12-01 to train the model, and predict what would the sales be for the whole year of 2019. 
 
@@ -672,7 +674,7 @@ model_with_trend_2 <- lm(data = training_data , sales~lag(sales, 12)+lag(sales, 
 summary(model_with_trend_2)
 
 model_without_trend <- lm(data = training_data , sales~lag(sales, 12)+lag(sales, 48))
-#summary(model_without_trend)
+summary(model_without_trend)
 
 # we want to predict whole year of 2019, so we need data from 2015-01-01 and after 
 
@@ -680,10 +682,10 @@ model_without_trend <- lm(data = training_data , sales~lag(sales, 12)+lag(sales,
 model <- model_with_trend_2
 
 test_data <- with_trends_full %>%
-  filter(Period >="2015-01-01" & Period < "2020-01-01")
+  filter(Period >="2015-01-01" & Period <= "2019-12-01")
 predictions <- test_data %>%
   add_predictions(model) %>% 
-  filter(Period >= "2019-01-01" )
+  filter(!(is.na(pred)) )
 
 
 MSE <- mean((predictions$pred -predictions$sales)^2)
@@ -696,7 +698,9 @@ ggplotly(ggplot(predictions, aes(x=exp(predictions$sales), y = exp(predictions$p
 
 (cor(predictions$sales, predictions$pred))^2
 ```
-We tried three versions of this model, we found that model $y_t=b_1y_{t-12}b_4y_{t-48}+b_5insurance + b_6SUVs$ makes better predictions for year 2019. MSE = `r MSE` and $R^2$ = `r (cor(predictions$sales, predictions$pred))^2`. Since this model works especially well. I would like to know its performance on other years. The $R^2$ = 0.9712654 for the predictions on 2015. The lowest $R^2$ was 0.8812861 on 2017's predictions for years from 2018-2014. 
+We tried three versions of this model, we found that model $y_t=b_1y_{t-12}b_4y_{t-48}+b_5insurance + b_6SUVs$ makes better predictions for year 2019. MSE = `r MSE` and $R^2$ = `r (cor(predictions$sales, predictions$pred))^2`. Since this model works especially well, I would like to know its performance on other years. 
+
+$R^2$ = 0.9712654 for the predictions on 2015. The lowest $R^2$ was 0.8812861 on 2017's predictions for years from 2018-2014. 
 
 
 **Test the model on 2018**
@@ -713,7 +717,7 @@ test_data <- with_trends_full %>%
 
 predictions <- test_data %>%
   add_predictions(model) %>% 
-  filter(Period >= "2018-01-01" )
+  filter(!(is.na(pred)) )
 
 ggplotly(ggplot(predictions, aes(x=exp(predictions$sales), y = exp(predictions$pred)))+
   geom_point() +
@@ -740,7 +744,7 @@ test_data <- with_trends_full %>%
 
 predictions <- test_data %>%
   add_predictions(model) %>% 
-  filter(Period >= "2017-01-01" )
+  filter(!(is.na(pred)) )
 
 ggplotly(ggplot(predictions, aes(x=exp(predictions$sales), y = exp(predictions$pred)))+
   geom_point() +
@@ -766,7 +770,7 @@ test_data <- with_trends_full %>%
 
 predictions <- test_data %>%
   add_predictions(model) %>% 
-  filter(Period >= "2016-01-01" )
+  filter(!(is.na(pred)) )
 
 ggplotly(ggplot(predictions, aes(x=exp(predictions$sales), y = exp(predictions$pred)))+
   geom_point() +
@@ -787,11 +791,11 @@ training_data <- with_trends_full %>%
 model <- lm(data = training_data , sales~lag(sales, 12)+lag(sales, 48)+ lag(insurance,12) + lag(suvs,12))
 
 test_data <- with_trends_full %>%
-  filter(Period >="2011-01-01" & Period < "2016-01-01")
+  filter(Period >="2011-01-01" & Period <= "2015-12-01")
 
 predictions <- test_data %>%
   add_predictions(model) %>% 
-  filter(Period >= "2015-01-01" )
+  filter(!(is.na(pred)) )
 
 ggplotly(ggplot(predictions, aes(x=exp(predictions$sales), y = exp(predictions$pred)))+
   geom_point() +

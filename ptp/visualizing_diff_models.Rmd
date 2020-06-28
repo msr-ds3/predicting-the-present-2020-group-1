@@ -2,39 +2,85 @@
 title: "Visualizing the performance of different models"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: columns
-    vertical_layout: fill
+    orientation: rows
+    social: menu
+    source_code: embed
+runtime: shiny
 ---
 
-```{r setup, include=FALSE}
-library(flexdashboard)
+```{r global, message=FALSE, warning=FALSE, include=FALSE}
+#Load package and data
+library(tidyverse)
+load("sales_trends.RData")
+
+# function for rolling-window-nowcasting
+rolling_window <- function(begin, start, end, model){
+  p <- with_trends_full %>% filter(Period >=begin & Period <= end)
+  s <- which(grepl(start, p$Period))
+  e <- which(grepl(end, p$Period))
+  for (i in s:e){
+    train_data <- p[1:i-1,]
+    model1 <- lm(data = train_data, model)
+    p$sales[i] <- predict(model1,train_data[1:i,])[i]
+  }
+p[s:e,]
+}
+
 ```
 
-Column {data-width=650}
+Column {.sidebar}
 -----------------------------------------------------------------------
 
-### Chart A
+This flexdashboard is designed for visualizing and evaluating the models related to [Predicting the Present with Google Trends](http://people.ischool.berkeley.edu/~hal/Papers/2011/ptp.pdf) section 3.1. Feel free to test your model by entering your formula below. (Please select the appropriate data range base on your model, you may see error message otherwise)
 
 ```{r}
-selectInput("Model", label = "Model",
-            choices = c(1, 2, 3, 4), selected = 1)
+selectInput("Begin", label = "First Month",
+            choices = c(with_trends_full$Period), selected = "2010-01-01")
 
-sliderInput("start_year", label = "Starting year",
-            min = 0.2, max = 2, value = 1, step = 0.2)
+selectInput("Start", label = "Starting Month for out-of-sample nowcasting",
+            choices = c(with_trends_full$Period), selected = "2017-10-01")
+
+selectInput("End", label = "End month",
+            choices = c(with_trends_full$Period), selected = "2019-01-01")
+
+textInput("formula_B", label ="Formula for baseline" , value = "sales ~ lag(sales, 12) + lag(sales, 48)")
+
+
+textInput("formula_T", label ="Formula for model with trends" , value = "sales ~ lag(sales, 12) + lag(sales, 48) + lag(insurance,12) + lag(suvs,12)" )
+
+
 ```
 
-Column {data-width=350}
+Column
 -----------------------------------------------------------------------
 
-### Chart B
+### Rolling-Window-Nowcasting
 
 ```{r}
+renderPlot({
+  base <- rolling_window(input$Begin, input$Start, input$End, as.formula(input$formula_B))
+  trends <- rolling_window(input$Begin, input$Start, input$End, as.formula(input$formula_T))
+  actual <- with_trends_full[which(grepl(input$Start, with_trends_full$Period)):which(grepl(input$End, with_trends_full$Period)),]
+  actual <- actual %>%
+  mutate(label ="actual")
+  base <- base %>%
+  mutate(label = "base")
+  trends <- trends %>%
+  mutate(label ="trends")
+  #plot_data <- rbind(base, trends)
+  plot_data <- rbind(actual, base, trends)
+  #R^2 for baseline model
+  rsb <- paste("Base: R^2 = ", round((cor(base$sales,actual$sales))^2,digits = 4))
+  # R^2 for trends
+  rst <- paste("Trend: R^2 = ", round((cor(trends$sales,actual$sales))^2,digits = 4))
+  ggplot(plot_data, aes(x=Period, y = sales, color = label, linetype = label))+
+      geom_line()+
+      ggtitle(paste0(rsb,"\n",rst))+
+      scale_colour_manual(values=c("black", "red","grey"))+
+      scale_linetype_manual(values = c("solid", "dashed", "solid"))+
+      ylab('log(mvp)')+
+      xlab('Index')
+  
+})
 
 ```
-
-### Chart C
-
-```{r}
-
-```
-

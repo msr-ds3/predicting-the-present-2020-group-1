@@ -5,8 +5,8 @@ account: xiaonazhou
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2514328
-bundleId: 3326385
+bundleId: 3332369
 url: https://xiaonazhou.shinyapps.io/visualizing_diff_models/
-when: 1593367831.34475
+when: 1593491024.45759
 asMultiple: FALSE
 asStatic: FALSE

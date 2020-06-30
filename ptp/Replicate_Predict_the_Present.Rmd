@@ -1,5 +1,5 @@
 ---
-title: "Replcation and Extensions of the paper *Predicting the Present with Google Trends* Session 3.1"
+title: "Replication and Extensions of the paper *Predicting the Present with Google Trends* Session 3.1"
 author: "Xiaona Zhou"
 date: "6/26/2020"
 output:

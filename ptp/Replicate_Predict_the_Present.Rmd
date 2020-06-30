@@ -1,7 +1,7 @@
 ---
 title: "Replication and Extensions of the paper *Predicting the Present with Google Trends* Session 3.1"
 author: "Xiaona Zhou"
-date: "Last endited: `r format(Sys.time(), '%B %d %Y')`"
+date: "Last edited: `r format(Sys.time(), '%B %d %Y')`"
 output:
   html_document:
     df_print: paged

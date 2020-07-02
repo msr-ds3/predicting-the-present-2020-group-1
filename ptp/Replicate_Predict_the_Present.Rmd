@@ -132,12 +132,12 @@ ggplot(plot_data, aes(x=Period, y = sales, color = label, linetype = label))+
   labs(subtitle ="MAE improvement: Overall = 10.66%  During recession = 21.46%" )
 ```
 
-#### MSE
+#### MAE
 
-```{r MSE_all}
-# MSE for Trends model
+```{r MAE_all}
+# MAE for Trends model
 mean(abs(trends$sales-actual$sales))
-# MSE for Base model 
+# MAE for Base model 
 mean(abs(base$sales-actual$sales))
 ```
 
@@ -151,9 +151,9 @@ mean(abs(base$sales-actual$sales))
 (cor(trends$sales,actual$sales))^2
 ```
 
-#### MSE for recession period 
+#### MAE for recession period 
 
-```{r MSE_recession}
+```{r MAE_recession}
 # data for the recession period Dec 2007 to June 2009
 recession_trends <- trends %>%
   filter(Period>="2007-12-01"& Period<="2009-06-01")
@@ -460,7 +460,7 @@ ggplotly(ggplot(plot_data, aes(x=Period, y = sales, color = label, linetype = la
   xlab('Index'))
 ```
 
-#### MSE
+#### MAE
 ```{r}
 # MAE_base 
 mean(abs(base$sales-actual$sales))
@@ -477,7 +477,7 @@ mean(abs(trends$sales-actual$sales))
 (cor(trends$sales,actual$sales))^2
 ```
 
-#### MSE during the recession period
+#### MAE during the recession period
 
 ```{r}
 recession_trends <- trends %>% 
@@ -666,7 +666,7 @@ ggplotly(ggplot(plot_data, aes(x=Period, y = sales, color = label, linetype = la
   xlab('Index'))
 ```
 
-#### MSE
+#### MAE
 
 ```{r}
 
